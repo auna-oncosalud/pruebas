@@ -287,66 +287,6 @@ async function login() {
     }
 }
 
-/* ══════════════════════════════════════════════
-   INTERCEPTOR BLINDADO (Recuperación de Contraseña)
-══════════════════════════════════════════════ */
-// 1. Atrapamos el link antes de que Supabase lo borre
-if (window.location.hash.includes('type=recovery')) {
-    sessionStorage.setItem('recuperando_clave', 'true');
-}
-
-// 2. Escuchamos el motor de Supabase
-supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'PASSWORD_RECOVERY' || sessionStorage.getItem('recuperando_clave') === 'true') {
-        sessionStorage.removeItem('recuperando_clave'); // Limpiamos la bandera
-
-        // Apagamos la pantalla principal
-        const loginSec = document.getElementById('login-section');
-        if (loginSec) loginSec.style.display = 'none';
-
-        // Encendemos el modal por fuerza bruta asegurando que se vea por encima de todo
-        const modal = document.getElementById('recovery-modal-overlay');
-        if (modal) {
-            modal.style.display = 'flex';
-            modal.style.backgroundColor = 'rgba(0, 15, 40, 0.95)'; // Fondo azul muy oscuro
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100vw';
-            modal.style.height = '100vh';
-            modal.style.zIndex = '999999';
-        }
-    }
-});
-
-// 3. Función para guardar la nueva clave
-async function guardarNuevaContrasena() {
-    const newPass = document.getElementById('recovery-new-pass').value;
-    if (newPass.length < 6) return alert("La contraseña debe tener mínimo 6 caracteres.");
-
-    const btn = document.getElementById("btn-save-recovery");
-    btn.disabled = true;
-    btn.querySelector(".btn-text").textContent = "Guardando...";
-
-    try {
-        // Como Supabase ya leyó el token del URL, el usuario está "logueado" en modo recuperación
-        const { data, error } = await supabaseClient.auth.updateUser({ password: newPass });
-        if (error) throw error;
-
-        alert("✅ ¡Contraseña actualizada con éxito! Inicia sesión con tu nueva clave.");
-
-        // Cerramos la sesión de recuperación y recargamos la página para limpiar todo
-        await supabaseClient.auth.signOut();
-        window.location.hash = ''; // Limpiamos el # de la URL
-        window.location.reload();
-
-    } catch (err) {
-        alert("❌ Error al actualizar: " + err.message);
-        btn.disabled = false;
-        btn.querySelector(".btn-text").textContent = "Actualizar Contraseña";
-    }
-}
-
 function setLoginLoading(loading) {
     const btn = document.getElementById("login-btn");
     const text = btn.querySelector(".btn-text");
