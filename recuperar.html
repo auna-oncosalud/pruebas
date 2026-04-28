@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contraseña - Auna</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .recovery-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
+        h2 { color: #0055b8; margin-top: 0; }
+        input { width: 100%; padding: 10px; margin: 10px 0 20px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #0055b8; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        button:hover { background-color: #003d82; }
+        #mensaje { margin-top: 15px; font-weight: bold; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <div class="recovery-box">
+        <h2>Ingresa tu nueva clave</h2>
+        <p style="font-size: 14px; color: #666;">Por favor, escribe tu nueva contraseña para acceder al portal.</p>
+        
+        <input type="password" id="nueva-clave" placeholder="Mínimo 6 caracteres">
+        
+        <button id="btn-guardar" onclick="actualizarClave()">Actualizar Contraseña</button>
+        <div id="mensaje"></div>
+    </div>
+
+    <script>
+        // 1. REEMPLAZA ESTO CON TUS CREDENCIALES REALES
+        const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co';
+        const SUPABASE_KEY = 'TU_SUPABASE_ANON_KEY_AQUI'; // <-- ¡No olvides poner tu llave aquí!
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function actualizarClave() {
+            const nuevaClave = document.getElementById('nueva-clave').value;
+            const mensaje = document.getElementById('mensaje');
+            const btn = document.getElementById('btn-guardar');
+
+            if(nuevaClave.length < 6) {
+                mensaje.style.color = 'red';
+                mensaje.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Guardando...';
+
+            try {
+                // Actualiza la contraseña en Supabase
+                const { error } = await supabase.auth.updateUser({ password: nuevaClave });
+                
+                if (error) throw error;
+
+                mensaje.style.color = 'green';
+                mensaje.textContent = '¡Éxito! Redirigiendo al login...';
+                
+                // Cierra la sesión temporal de recuperación y redirige al index
+                await supabase.auth.signOut();
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+
+            } catch (err) {
+                mensaje.style.color = 'red';
+                mensaje.textContent = 'Error: El enlace expiró o es inválido.';
+                btn.disabled = false;
+                btn.textContent = 'Actualizar Contraseña';
+            }
+        }
+    </script>
+</body>
+</html>
