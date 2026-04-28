@@ -30,9 +30,10 @@
     <script>
         // 1. REEMPLAZA ESTO CON TUS CREDENCIALES REALES
         const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4'; // <-- ¡No olvides poner tu llave aquí!
+        const SUPABASE_KEY = 'TU_SUPABASE_ANON_KEY_AQUI'; // <-- ¡No olvides poner tu llave aquí!
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // EL CAMBIO: Cambiamos el nombre a "clienteSupabase" para evitar conflictos
+        const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function actualizarClave() {
             const nuevaClave = document.getElementById('nueva-clave').value;
@@ -49,8 +50,8 @@
             btn.textContent = 'Guardando...';
 
             try {
-                // Actualiza la contraseña en Supabase
-                const { error } = await supabase.auth.updateUser({ password: nuevaClave });
+                // Actualiza la contraseña usando clienteSupabase
+                const { error } = await clienteSupabase.auth.updateUser({ password: nuevaClave });
                 
                 if (error) throw error;
 
@@ -58,7 +59,7 @@
                 mensaje.textContent = '¡Éxito! Redirigiendo al login...';
                 
                 // Cierra la sesión temporal de recuperación y redirige al index
-                await supabase.auth.signOut();
+                await clienteSupabase.auth.signOut();
                 setTimeout(() => {
                     window.location.href = 'index.html';
                 }, 2000);
@@ -66,6 +67,7 @@
             } catch (err) {
                 mensaje.style.color = 'red';
                 mensaje.textContent = 'Error: El enlace expiró o es inválido.';
+                console.error("Detalle del error:", err);
                 btn.disabled = false;
                 btn.textContent = 'Actualizar Contraseña';
             }
