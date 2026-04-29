@@ -1,10 +1,10 @@
 /* ══════════════════════════════════════════════
-   AUNA — PORTAL ASESORES | script.js (Supabase Pro + Realtime Full)
+   AUNA — PORTAL ASESORES | script.js (Supabase Enterprise Full)
    ══════════════════════════════════════════════ */
 
 // ─── CONFIGURACIÓN DE SUPABASE ───
-const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co'; // REEMPLAZAR CON TU URL
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4'; // REEMPLAZAR CON TU ANON KEY
+const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co'; 
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4'; 
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -12,61 +12,98 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let allLeads = [];
 let currentPage = 1;
 const PAGE_SIZE = 20;
-let realtimeChannel = null; // Canal para WebSockets
+let realtimeChannel = null;
+
+// ─── Variables de Seguridad (Watchdog) ───
+let temporizadorInactividad;
+const TIEMPO_INACTIVIDAD_MS = 15 * 60 * 1000; // 15 Minutos
 
 /* ══════════════════════════════════════════════
-   SESIÓN — localStorage con expiración 15 min
+   SISTEMA DE SESIÓN Y SEGURIDAD (WATCHDOG)
 ══════════════════════════════════════════════ */
-const SESSION_KEY = "auna_session";
-const SESSION_MINUTES = 15;
+const SESSION_KEY = "auna_perfil"; // Ahora solo es una caché visual temporal
 
 function guardarSesion(usuario, rol, agente, equipo) {
-    const sesion = { usuario, rol, agente, equipo, expira: Date.now() + SESSION_MINUTES * 60 * 1000 };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+    const sesion = { usuario, rol, agente, equipo };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
 }
 
 function leerSesion() {
     try {
-        const raw = localStorage.getItem(SESSION_KEY);
-        if (!raw) return null;
-        const sesion = JSON.parse(raw);
-        if (Date.now() > sesion.expira) {
-            localStorage.removeItem(SESSION_KEY);
-            return null;
-        }
-        sesion.expira = Date.now() + SESSION_MINUTES * 60 * 1000;
-        localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
-        return sesion;
+        const raw = sessionStorage.getItem(SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
     } catch {
-        localStorage.removeItem(SESSION_KEY);
         return null;
     }
 }
 
-async function borrarSesion() {
-    localStorage.removeItem(SESSION_KEY);
-    if (realtimeChannel) {
-        supabaseClient.removeChannel(realtimeChannel);
-        realtimeChannel = null;
-    }
-    await supabaseClient.auth.signOut();
+function borrarSesionCache() {
+    sessionStorage.removeItem(SESSION_KEY);
 }
 
-(function verificarSesionAlCargar() {
-    const sesion = leerSesion();
-    if (sesion) {
-        mostrarPantallaFormulario({
-            usuario: sesion.usuario,
-            rol: sesion.rol,
-            agente: sesion.agente,
-            equipo: sesion.equipo,
-        });
+// 1. Escuchador Global de Estado (Motor de Supabase)
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+        // Si no tenemos el perfil en caché, lo descargamos
+        if (!leerSesion()) {
+            const { data: usuario } = await supabaseClient
+                .from('usuarios')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            if (usuario) {
+                guardarSesion(usuario.usuario, usuario.rol, usuario.agente, usuario.equipo);
+                mostrarPantallaFormulario(usuario);
+            }
+        } else {
+            mostrarPantallaFormulario(leerSesion());
+        }
+        reiniciarTemporizador();
+    } 
+    
+    if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        borrarSesionCache();
+        document.getElementById("form-section").style.display = "none";
+        document.getElementById("login-section").style.display = "block";
+        if (realtimeChannel) {
+            supabaseClient.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+    }
+});
+
+// 2. Watchdog de Inactividad (El temporizador estricto)
+function reiniciarTemporizador() {
+    clearTimeout(temporizadorInactividad);
+    // Solo iniciamos el reloj si realmente hay una sesión en Supabase
+    supabaseClient.auth.getSession().then(({ data }) => {
+        if (data.session) {
+            temporizadorInactividad = setTimeout(cerrarSesionPorInactividad, TIEMPO_INACTIVIDAD_MS);
+        }
+    });
+}
+
+async function cerrarSesionPorInactividad() {
+    console.log("Sesión expirada por inactividad.");
+    alert("Tu sesión ha expirado por inactividad. Vuelve a iniciar sesión para continuar.");
+    await logout(); // Llama a la función de limpieza visual y cierra sesión
+}
+
+// 3. Detectar si el asesor está trabajando
+['mousemove', 'keypress', 'click', 'touchstart', 'scroll'].forEach(evt => {
+    window.addEventListener(evt, reiniciarTemporizador);
+});
+
+// 4. Verificación inicial al abrir la página
+(async function verificarSesionInicial() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+        document.getElementById("login-section").style.display = "block";
+        document.getElementById("form-section").style.display = "none";
     }
 })();
 
-document.addEventListener("click", () => leerSesion());
-document.addEventListener("keydown", () => leerSesion());
-document.addEventListener("touchstart", () => leerSesion());
 
 /* ══════════════════════════════════════════════
    NOTIFICACIÓN SUTIL EN TIEMPO REAL (Proyecciones)
@@ -100,6 +137,7 @@ function mostrarToastRealtime(mensaje) {
     }, 4500);
 }
 
+
 /* ══════════════════════════════════════════════
    SISTEMA DE TIEMPO REAL (WEBSOCKETS FULL)
 ══════════════════════════════════════════════ */
@@ -107,65 +145,51 @@ function iniciarSuscripcionTiempoReal() {
     const miRol = leerSesion()?.rol;
     const miUsuario = leerSesion()?.usuario;
 
-    // Cerramos conexión previa por seguridad
     if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
 
-    // Nos suscribimos a un solo canal global para optimizar conexiones
     realtimeChannel = supabaseClient.channel('auna-db-changes')
-        // 1. Escuchar la tabla PROYECCIÓN
+        // 1. Escuchar PROYECCIÓN
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'proyeccion' },
             (payload) => {
                 const usuarioModificado = payload.new?.usuario || payload.old?.usuario;
-
-                // Si es Admin y el cambio es de un Asesor, notificamos y recargamos
                 if (miRol === "Administrador" && usuarioModificado && usuarioModificado !== miUsuario) {
                     const nombreAsesor = _proy_usuariosAdmin.find(u => u.usuario === usuarioModificado)?.agente || usuarioModificado;
                     mostrarToastRealtime(`<strong>${nombreAsesor}</strong> ha actualizado su proyección`);
                     proy_recargarSilencioso();
-                }
-                // Si el asesor cambió su propia data (sincronización multi-dispositivo)
-                else if (usuarioModificado === miUsuario && payload.new?.usuario) {
+                } else if (usuarioModificado === miUsuario && payload.new?.usuario) {
                     proy_recargarSilencioso();
                 }
             }
         )
-        // 2. Escuchar la tabla LEADS
+        // 2. Escuchar LEADS
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'leads' },
             (payload) => {
                 const usuarioModificado = payload.new?.usuario || payload.old?.usuario;
-
-                // SIN notificaciones. Recarga silenciosa de tablas y gráficas
                 if (miRol === "Administrador") {
-                    leads_recargarSilencioso(); // El Admin actualiza todo siempre
+                    leads_recargarSilencioso(); 
                 } else if (usuarioModificado === miUsuario) {
-                    leads_recargarSilencioso(); // El Asesor solo actualiza si es su propio lead
+                    leads_recargarSilencioso(); 
                 }
             }
         )
         .subscribe();
 }
 
-// ── Recarga Silenciosa de LEADS (Registros y Estadísticas) ──
 async function leads_recargarSilencioso() {
     const rol = leerSesion()?.rol;
     const miUser = leerSesion()?.usuario;
-
     try {
         let query = supabaseClient.from('leads').select('*').limit(10000);
-        if (rol !== "Administrador") {
-            query = query.eq('usuario', miUser);
-        }
+        if (rol !== "Administrador") query = query.eq('usuario', miUser);
 
         const { data: leadsData, error } = await query;
         if (error) throw error;
 
         allLeads = leadsData || [];
-
-        // Re-ordenamos por fecha más reciente
         allLeads.sort((a, b) => {
             const da = parseFechaParaFiltro(a.fecha);
             const db = parseFechaParaFiltro(b.fecha);
@@ -175,26 +199,23 @@ async function leads_recargarSilencioso() {
             return 0;
         });
 
-        // Actualizamos UI solo si la vista correspondiente está activa
         const vistaLista = document.getElementById("vista-lista");
         const vistaStats = document.getElementById("vista-stats");
 
         if (vistaLista && vistaLista.style.display !== "none") {
             document.getElementById("records-sub").textContent =
                 `${allLeads.length} lead${allLeads.length !== 1 ? "s" : ""} encontrado${allLeads.length !== 1 ? "s" : ""}`;
-            aplicarFiltros(); // Aplica filtros vigentes y re-dibuja la tabla
+            aplicarFiltros();
         }
 
         if (vistaStats && vistaStats.style.display === "block") {
-            renderStats(); // Re-dibuja las gráficas y KPIs
+            renderStats(); 
         }
-
     } catch (error) {
         console.error("Error en recarga silenciosa de leads:", error);
     }
 }
 
-// ── Recarga Silenciosa de PROYECCIONES ──
 async function proy_recargarSilencioso() {
     const hoy = proy_fechaHoyLima();
     const rol = leerSesion()?.rol;
@@ -202,7 +223,6 @@ async function proy_recargarSilencioso() {
 
     try {
         const { data: proyecciones } = await supabaseClient.from('proyeccion').select('*').eq('dia', hoy);
-
         if (rol === "Administrador") {
             proy_renderAdmin(proyecciones || [], _proy_usuariosAdmin);
         } else {
@@ -216,6 +236,7 @@ async function proy_recargarSilencioso() {
     }
 }
 
+
 /* ══════════════════════════════════════════════
    SHOW / HIDE PASSWORD
 ══════════════════════════════════════════════ */
@@ -228,6 +249,7 @@ function togglePass() {
         ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
         : `<path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>`;
 }
+
 
 /* ══════════════════════════════════════════════
    LOGIN (Supabase)
@@ -246,41 +268,34 @@ async function login() {
     }
 
     try {
-        // 1. TRUCO DE PUENTE: Le preguntamos a la BD cuál es el correo real de este "usuario"
-        const { data: emailReal, error: rpcError } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
-
-        // Si la función falla por algo, aplicamos el método viejo por seguridad
+        const { data: emailReal } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
         const emailLogin = emailReal || (userIn + "@auna.pe");
 
-        // 2. Ahora sí, iniciamos sesión con el correo real
         const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
             email: emailLogin,
             password: passIn
         });
 
         if (authError || !authData.user) {
-            console.error("Detalle Auth:", authError?.message);
             showLoginError("Usuario o contraseña incorrectos.");
             setLoginLoading(false);
             return;
         }
 
-        // 3. Validar perfil final
+        // Buscamos el perfil para guardarlo en caché (El Dashboard se abre por onAuthStateChange)
         const { data: usuario, error: profileError } = await supabaseClient
             .from('usuarios')
             .select('*')
-            .eq('usuario', userIn)
+            .eq('id', authData.user.id)
             .single();
 
-        if (profileError || !usuario) {
-            console.error("Detalle Perfil:", profileError?.message);
-            showLoginError("No se pudo cargar tu perfil.");
-        } else {
-            guardarSesion(usuario.usuario, usuario.rol, usuario.agente);
+        if (usuario) {
+            guardarSesion(usuario.usuario, usuario.rol, usuario.agente, usuario.equipo);
             mostrarPantallaFormulario(usuario);
+        } else {
+            showLoginError("No se pudo cargar tu perfil.");
         }
     } catch (error) {
-        console.error("Detalle DB (Login Catch):", error);
         showLoginError("Error al conectar. Verifica tu conexión.");
     } finally {
         setLoginLoading(false);
@@ -306,10 +321,10 @@ function showLoginError(msg) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("password").addEventListener("keydown", (e) => {
+    document.getElementById("password")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") login();
     });
-    document.getElementById("username").addEventListener("keydown", (e) => {
+    document.getElementById("username")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") document.getElementById("password").focus();
     });
 
@@ -327,6 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+
 /* ══════════════════════════════════════════════
    MOSTRAR PANTALLA FORMULARIO
 ══════════════════════════════════════════════ */
@@ -342,15 +358,15 @@ function mostrarPantallaFormulario(user) {
     document.getElementById("user-avatar").textContent = nombre.charAt(0).toUpperCase();
     document.getElementById("form-title").textContent = `Formulario Barrido — ${nombre}`;
 
-    // Activar tiempo real
     iniciarSuscripcionTiempoReal();
 }
 
+
 /* ══════════════════════════════════════════════
-   LOGOUT
+   LOGOUT (UI Cleans and Supabase Auth out)
 ══════════════════════════════════════════════ */
 async function logout() {
-    await borrarSesion();
+    // 1. Limpiamos las variables de entorno visual
     allLeads = [];
     currentPage = 1;
     activeQuickFilter = "todos";
@@ -394,10 +410,12 @@ async function logout() {
     document.getElementById("tab-form")?.classList.add("active");
     document.getElementById("panel-form")?.classList.add("active");
 
-    document.getElementById("form-section").style.display = "none";
-    document.getElementById("login-section").style.display = "block";
     document.getElementById("barrido-form").reset();
+
+    // 2. Destruimos el token en servidor (Esto disparará el evento onAuthStateChange)
+    await supabaseClient.auth.signOut();
 }
+
 
 /* ══════════════════════════════════════════════
    TABS & MOBILE NAV
@@ -448,8 +466,9 @@ document.addEventListener("click", e => {
     if (nav && !nav.contains(e.target)) closeMobileNav();
 });
 
+
 /* ══════════════════════════════════════════════
-   VALIDACIÓN
+   VALIDACIÓN DE LEAD
 ══════════════════════════════════════════════ */
 function validateForm() {
     let valid = true;
@@ -483,6 +502,7 @@ function validateForm() {
         el.addEventListener("change", () => { el.classList.remove("invalid"); });
     }
 });
+
 
 /* ══════════════════════════════════════════════
    GUARDAR LEAD (Supabase)
@@ -561,6 +581,7 @@ function showToast() {
     }, 3500);
 }
 
+
 /* ══════════════════════════════════════════════
    VER REGISTROS (Supabase)
 ══════════════════════════════════════════════ */
@@ -624,6 +645,7 @@ async function verRegistros() {
         btn.classList.remove("spinning");
     }
 }
+
 
 /* ══════════════════════════════════════════════
    FILTROS RÁPIDOS Y BÚSQUEDA
@@ -749,8 +771,9 @@ function limpiarFechas() {
     aplicarFiltros();
 }
 
+
 /* ══════════════════════════════════════════════
-   MODAL DE EXPORTACIÓN
+   MODAL DE EXPORTACIÓN EXCEL
 ══════════════════════════════════════════════ */
 let exportPeriod = "todos";
 
@@ -892,6 +915,7 @@ function showToastExport(count) {
         toast.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ¡Lead actualizado con éxito!`;
     }, 3500);
 }
+
 
 /* ══════════════════════════════════════════════
    RENDER TABLE & MODAL EDITAR (Supabase)
@@ -1037,7 +1061,7 @@ function paginationRange(current, total) {
 
 function cambiarPagina(page) {
     currentPage = page;
-    aplicarFiltros(true); // El true asegura que se respete la página actual al filtrar visualmente
+    aplicarFiltros(true); 
     document.getElementById("tabla-registros").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1150,6 +1174,7 @@ function showToastEdit() {
     }, 3500);
 }
 
+
 /* ══════════════════════════════════════════════
    ENCUESTA — QR Y LINK PERSONALIZADO
 ══════════════════════════════════════════════ */
@@ -1226,6 +1251,7 @@ function descargarQR() {
     link.href = canvas.toDataURL("image/png");
     link.click();
 }
+
 
 /* ══════════════════════════════════════════════
    ADMIN — POBLAR SELECTORES DE ASESORES
@@ -1663,6 +1689,7 @@ function dibujarGrafica(diasOrdenados) {
     });
 }
 
+
 /* ══════════════════════════════════════════════
    COTIZADOR
 ══════════════════════════════════════════════ */
@@ -2004,6 +2031,7 @@ document.addEventListener("click", (e) => {
     }
 });
 
+
 /* ══════════════════════════════════════════════
    WHATSAPP MODAL (Supabase)
 ══════════════════════════════════════════════ */
@@ -2135,6 +2163,7 @@ function closeWaModal(event) {
     overlay.classList.remove("active");
     setTimeout(() => { overlay.style.display = "none"; document.body.style.overflow = ""; }, 250);
 }
+
 
 /* ══════════════════════════════════════════════
    PROYECCIÓN (Supabase - Optimizada)
@@ -2352,7 +2381,6 @@ function proy_renderAdmin(data, todosUsuarios = []) {
         const totalAsesor = filas.reduce((s, f) => s + (parseInt(f.densidad) || 0), 0);
         const nombreAgente = mapaAgentes[usuarioId] || usuarioId;
 
-        // Calcular mix de productos para los mini-KPIs
         const mix = {};
         filas.forEach(f => {
             const p = f.producto || "Otros";
@@ -2369,7 +2397,7 @@ function proy_renderAdmin(data, todosUsuarios = []) {
             };
             return Object.entries(mix).map(([prod, cant]) => {
                 const color = mapColors[prod] || "slate";
-                const inicial = prod.split(" ").pop(); // Toma la última palabra (Classic, Premium, etc)
+                const inicial = prod.split(" ").pop(); 
                 return `<span class="proy-mini-kpi ${color}">${inicial}: ${cant}</span>`;
             }).join("");
         };
@@ -2546,7 +2574,7 @@ function proy_toggleAsesor(usuarioId) {
 }
 
 /* ══════════════════════════════════════════════
-   GESTIÓN DE EQUIPO (Solo Administradores)
+   GESTIÓN DE EQUIPO (ADMINISTRADORES)
 ══════════════════════════════════════════════ */
 async function abrirModalEquipo() {
     const sesion = leerSesion();
@@ -2555,60 +2583,6 @@ async function abrirModalEquipo() {
         return;
     }
 
-    // Reset UI
-    const msgContainer = document.getElementById("team-msg-container");
-    if (msgContainer) msgContainer.style.display = "none";
-    document.getElementById("new-user-name").value = "";
-    document.getElementById("new-user-pass").value = "";
-
-    const overlay = document.getElementById("team-modal-overlay");
-    overlay.style.display = "flex";
-    overlay.offsetHeight;
-    overlay.classList.add("active");
-    document.body.style.overflow = "hidden";
-
-    switchTeamTab('crear');
-    cargarListaEquipo();
-}
-
-function closeTeamModal(e) {
-    if (e && e.target !== document.getElementById("team-modal-overlay")) return;
-    const overlay = document.getElementById("team-modal-overlay");
-    overlay.classList.remove("active");
-    setTimeout(() => {
-        overlay.style.display = "none";
-        document.body.style.overflow = "";
-    }, 250);
-}
-
-function showTeamMessage(msg, type = 'success') {
-    const container = document.getElementById("team-msg-container");
-    const label = document.getElementById("team-msg");
-    const icon = document.getElementById("team-msg-icon");
-
-    container.className = `team-message-bar ${type}`;
-    label.textContent = msg;
-
-    if (type === 'success') {
-        icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px; height:18px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-    } else {
-        icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px; height:18px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
-    }
-
-    container.style.display = "flex";
-}
-
-/* ══════════════════════════════════════════════
-   GESTIÓN DE EQUIPO (UX Refined)
-   ══════════════════════════════════════════════ */
-async function abrirModalEquipo() {
-    const sesion = leerSesion();
-    if (sesion?.rol !== "Administrador") {
-        alert("Esta función es exclusiva para Supervisores/Administradores.");
-        return;
-    }
-
-    // Reset UI
     const msgContainer = document.getElementById("team-msg-container");
     if (msgContainer) msgContainer.style.display = "none";
 
@@ -2675,7 +2649,6 @@ function switchTeamTab(tab) {
     if (msgContainer) msgContainer.style.display = "none";
 }
 
-// Generación automática de accesos
 function actualizarPreviews() {
     const nombre = document.getElementById("new-user-nombre").value.trim();
     const apellido = document.getElementById("new-user-apellido").value.trim();
@@ -2683,7 +2656,6 @@ function actualizarPreviews() {
     if (nombre && apellido) {
         const userGen = (nombre + apellido).toLowerCase().replace(/\s/g, "");
         const passGen = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase() + "123.";
-
         document.getElementById("preview-user").textContent = userGen;
         document.getElementById("preview-pass").textContent = passGen;
     } else {
@@ -2692,7 +2664,6 @@ function actualizarPreviews() {
     }
 }
 
-// Escuchar cambios para la vista previa
 document.addEventListener('input', (e) => {
     if (e.target.id === 'new-user-nombre' || e.target.id === 'new-user-apellido') {
         actualizarPreviews();
@@ -2729,7 +2700,7 @@ async function cargarListaEquipo() {
 
         let html = "";
         data.forEach(user => {
-            const inicial = user.usuario.charAt(0);
+            const inicial = user.usuario.charAt(0).toUpperCase();
             html += `
             <div class="team-member-card">
                 <div class="member-avatar">${inicial}</div>
@@ -2763,7 +2734,6 @@ async function ejecutarCrearAsesor() {
         return showTeamMessage("❌ Completa todos los campos.", "error");
     }
 
-    // Generación Automática
     const usuarioAuto = (nombre + apellido).toLowerCase().replace(/\s/g, "");
     const passAuto = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase() + "123.";
 
@@ -2773,11 +2743,9 @@ async function ejecutarCrearAsesor() {
     btn.querySelector(".btn-loader").style.display = "flex";
 
     try {
-        // CAMBIO CLAVE: Solicitamos el ID real de la sesión a Supabase Auth en tiempo real
         const { data: { user: adminAuth }, error: authErr } = await supabaseClient.auth.getUser();
         if (authErr || !adminAuth) throw new Error("No se pudo validar tu sesión activa.");
 
-        // Consultamos el equipo en la tabla usuarios usando su ID (la fuente de verdad)
         const { data: adminData, error: errAdmin } = await supabaseClient
             .from('usuarios')
             .select('equipo')
@@ -2791,8 +2759,7 @@ async function ejecutarCrearAsesor() {
             auth: { persistSession: false }
         });
 
-        // SignUp con Correo Real y Metadata validada
-        const { data, error } = await tempClient.auth.signUp({
+        const { error } = await tempClient.auth.signUp({
             email: emailReal,
             password: passAuto,
             options: {
@@ -2800,7 +2767,7 @@ async function ejecutarCrearAsesor() {
                     nombre: nombre,
                     apellido: apellido,
                     username: usuarioAuto,
-                    equipo: miEquipo, // Se asigna el equipo actualizado automáticamente
+                    equipo: miEquipo,
                     rol: 'Asesor'
                 }
             }
@@ -2810,7 +2777,6 @@ async function ejecutarCrearAsesor() {
 
         showTeamMessage(`✅ ¡Asesor creado en ${miEquipo}!<br><small>Usuario: <b>${usuarioAuto}</b><br>Clave: <b>${passAuto}</b></small>`, "success");
 
-        // Limpiar campos y refrescar
         nInput.value = "";
         aInput.value = "";
         eInput.value = "";
@@ -2827,13 +2793,14 @@ async function ejecutarCrearAsesor() {
         btn.querySelector(".btn-loader").style.display = "none";
     }
 }
+
 async function ejecutarEliminarAsesor(nombreAsesor) {
     if (!confirm(`¿Estás seguro de eliminar a "${nombreAsesor.toUpperCase()}"? Se revocará su acceso de forma permanente.`)) return;
 
     showTeamMessage("Procesando eliminación...", "success");
 
     try {
-        const { data, error } = await supabaseClient.rpc('eliminar_asesor_equipo', { p_nombre: nombreAsesor.toLowerCase() });
+        const { error } = await supabaseClient.rpc('eliminar_asesor_equipo', { p_nombre: nombreAsesor.toLowerCase() });
         if (error) throw error;
 
         showTeamMessage(`El asesor "${nombreAsesor}" ha sido eliminado.`, "success");
