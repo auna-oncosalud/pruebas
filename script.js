@@ -16,7 +16,7 @@ let realtimeChannel = null;
 
 // ─── Variables de Seguridad (Watchdog) ───
 let temporizadorInactividad;
-const TIEMPO_INACTIVIDAD_MS = 15 * 60 * 1000; // 15 Minutos
+const TIEMPO_INACTIVIDAD_MS = 2 * 60 * 1000; // 15 Minutos
 
 /* ══════════════════════════════════════════════
    SISTEMA DE SESIÓN Y SEGURIDAD (WATCHDOG)
