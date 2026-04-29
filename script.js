@@ -73,21 +73,28 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     }
 });
 
-// 2. Watchdog de Inactividad (El temporizador estricto)
+// 2. Watchdog de Inactividad (Sincrónico y Optimizado)
+let ultimoMovimiento = 0;
+
 function reiniciarTemporizador() {
+    // FRENO: Solo registramos la actividad del mouse 1 vez por segundo para no saturar la memoria
+    const ahora = Date.now();
+    if (ahora - ultimoMovimiento < 1000) return;
+    ultimoMovimiento = ahora;
+
+    // VALIDACIÓN RÁPIDA: Si la pantalla de formulario está oculta, sabemos que no está logueado
+    const formSection = document.getElementById("form-section");
+    if (!formSection || formSection.style.display === "none") return;
+
+    // LIMPIEZA SINCRÓNICA: Borramos el cronómetro anterior y creamos uno nuevo de forma inmediata
     clearTimeout(temporizadorInactividad);
-    // Solo iniciamos el reloj si realmente hay una sesión en Supabase
-    supabaseClient.auth.getSession().then(({ data }) => {
-        if (data.session) {
-            temporizadorInactividad = setTimeout(cerrarSesionPorInactividad, TIEMPO_INACTIVIDAD_MS);
-        }
-    });
+    temporizadorInactividad = setTimeout(cerrarSesionPorInactividad, TIEMPO_INACTIVIDAD_MS);
 }
 
 async function cerrarSesionPorInactividad() {
     console.log("Sesión expirada por inactividad.");
     alert("Tu sesión ha expirado por inactividad. Vuelve a iniciar sesión para continuar.");
-    await logout(); // Llama a la función de limpieza visual y cierra sesión
+    await logout(); 
 }
 
 // 3. Detectar si el asesor está trabajando
