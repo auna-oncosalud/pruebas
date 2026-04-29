@@ -2773,18 +2773,25 @@ async function ejecutarCrearAsesor() {
     btn.querySelector(".btn-loader").style.display = "flex";
 
     try {
-        const adminUser = leerSesion()?.usuario;
-        const { data: adminData, error: errAdmin } = await supabaseClient
-            .from('usuarios').select('equipo').eq('usuario', adminUser).single();
+        // CAMBIO CLAVE: Solicitamos el ID real de la sesión a Supabase Auth en tiempo real
+        const { data: { user: adminAuth }, error: authErr } = await supabaseClient.auth.getUser();
+        if (authErr || !adminAuth) throw new Error("No se pudo validar tu sesión activa.");
 
-        if (errAdmin) throw new Error("No pudimos verificar tu equipo.");
+        // Consultamos el equipo en la tabla usuarios usando su ID (la fuente de verdad)
+        const { data: adminData, error: errAdmin } = await supabaseClient
+            .from('usuarios')
+            .select('equipo')
+            .eq('id', adminAuth.id)
+            .single();
+
+        if (errAdmin) throw new Error("No pudimos verificar tu equipo en la base de datos.");
         const miEquipo = adminData.equipo || 'Sin Equipo';
 
         const tempClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
             auth: { persistSession: false }
         });
 
-        // SignUp con Correo Real y Metadata
+        // SignUp con Correo Real y Metadata validada
         const { data, error } = await tempClient.auth.signUp({
             email: emailReal,
             password: passAuto,
@@ -2793,7 +2800,7 @@ async function ejecutarCrearAsesor() {
                     nombre: nombre,
                     apellido: apellido,
                     username: usuarioAuto,
-                    equipo: miEquipo,
+                    equipo: miEquipo, // Se asigna el equipo actualizado automáticamente
                     rol: 'Asesor'
                 }
             }
@@ -2801,7 +2808,7 @@ async function ejecutarCrearAsesor() {
 
         if (error) throw error;
 
-        showTeamMessage(`✅ ¡Asesor creado!<br><small>Usuario: <b>${usuarioAuto}</b><br>Clave: <b>${passAuto}</b></small>`, "success");
+        showTeamMessage(`✅ ¡Asesor creado en ${miEquipo}!<br><small>Usuario: <b>${usuarioAuto}</b><br>Clave: <b>${passAuto}</b></small>`, "success");
 
         // Limpiar campos y refrescar
         nInput.value = "";
@@ -2820,7 +2827,6 @@ async function ejecutarCrearAsesor() {
         btn.querySelector(".btn-loader").style.display = "none";
     }
 }
-
 async function ejecutarEliminarAsesor(nombreAsesor) {
     if (!confirm(`¿Estás seguro de eliminar a "${nombreAsesor.toUpperCase()}"? Se revocará su acceso de forma permanente.`)) return;
 
