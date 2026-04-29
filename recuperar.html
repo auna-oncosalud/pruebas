@@ -3,75 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recuperar Contraseña - Auna</title>
+    <title>Recuperar Contraseña - Auna Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .recovery-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
-        h2 { color: #0055b8; margin-top: 0; }
-        input { width: 100%; padding: 10px; margin: 10px 0 20px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background-color: #0055b8; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        button:hover { background-color: #003d82; }
-        #mensaje { margin-top: 15px; font-weight: bold; font-size: 0.9em; }
+        :root {
+            --midnight: #00195f;
+            --cerulean: #00acce;
+            --slate: #475569;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--midnight) 0%, #003087 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .recovery-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 450px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .recovery-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--cerulean);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: var(--midnight);
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: var(--slate);
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .field-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--midnight);
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 45px 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--cerulean);
+            box-shadow: 0 0 0 4px rgba(0, 172, 206, 0.1);
+        }
+
+        .toggle-pass {
+            position: absolute;
+            right: 15px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: color 0.3s;
+            font-size: 18px;
+        }
+
+        .toggle-pass:hover {
+            color: var(--cerulean);
+        }
+
+        .validation-msg {
+            font-size: 12px;
+            margin-top: 6px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        button#btn-guardar {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--midnight);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        button#btn-guardar:hover:not(:disabled) {
+            background-color: #002a7a;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        button#btn-guardar:disabled {
+            background-color: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        #mensaje-final {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            display: none;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="recovery-box">
-        <h2>Ingresa tu nueva clave</h2>
-        <p style="font-size: 14px; color: #666;">Por favor, escribe tu nueva contraseña para acceder al portal.</p>
+    <div class="recovery-card">
+        <div class="logo-section">
+            <div style="font-size: 40px; color: var(--cerulean); font-weight: 800; letter-spacing: -2px;">auna</div>
+        </div>
+
+        <h2>Nueva Contraseña</h2>
+        <p class="subtitle">Asegura tu cuenta con una clave robusta y fácil de recordar.</p>
         
-        <input type="password" id="nueva-clave" placeholder="Mínimo 6 caracteres">
+        <div class="field-group">
+            <label for="nueva-clave">Contraseña Nueva</label>
+            <div class="input-wrapper">
+                <input type="password" id="nueva-clave" placeholder="••••••••" oninput="validarInputs()">
+                <i class="fa-solid fa-eye toggle-pass" onclick="toggleVisibility('nueva-clave', this)"></i>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="confirmar-clave">Confirmar Contraseña</label>
+            <div class="input-wrapper">
+                <input type="password" id="confirmar-clave" placeholder="••••••••" oninput="validarInputs()">
+                <i class="fa-solid fa-eye toggle-pass" onclick="toggleVisibility('confirmar-clave', this)"></i>
+            </div>
+            <div id="match-msg" class="validation-msg"></div>
+        </div>
         
-        <button id="btn-guardar" onclick="actualizarClave()">Actualizar Contraseña</button>
-        <div id="mensaje"></div>
+        <button id="btn-guardar" onclick="actualizarClave()" disabled>
+            <span class="btn-text">Actualizar Contraseña</span>
+            <div class="loader" id="btn-loader"></div>
+        </button>
+
+        <div id="mensaje-final"></div>
     </div>
 
     <script>
-        // 1. REEMPLAZA ESTO CON TUS CREDENCIALES REALES
+        // CONFIGURACIÓN DE CREDENCIALES
         const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4'; // <-- ¡No olvides poner tu llave aquí!
+        const SUPABASE_KEY = 'TU_SUPABASE_ANON_KEY'; // REEMPLAZAR CON TU KEY REAL
         
-        // EL CAMBIO: Cambiamos el nombre a "clienteSupabase" para evitar conflictos
         const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function actualizarClave() {
-            const nuevaClave = document.getElementById('nueva-clave').value;
-            const mensaje = document.getElementById('mensaje');
+        // 1. INYECCIÓN DE SESIÓN FORZADA (Lógica de Seguridad)
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+            clienteSupabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            });
+            window.location.hash = ''; // Limpiar URL
+        }
+
+        // Función para ver/ocultar clave
+        function toggleVisibility(id, icon) {
+            const el = document.getElementById(id);
+            if (el.type === "password") {
+                el.type = "text";
+                icon.classList.replace("fa-eye", "fa-eye-slash");
+            } else {
+                el.type = "password";
+                icon.classList.replace("fa-eye-slash", "fa-eye");
+            }
+        }
+
+        // Validación en tiempo real
+        function validarInputs() {
+            const pass1 = document.getElementById('nueva-clave').value;
+            const pass2 = document.getElementById('confirmar-clave').value;
+            const msg = document.getElementById('match-msg');
             const btn = document.getElementById('btn-guardar');
 
-            if(nuevaClave.length < 6) {
-                mensaje.style.color = 'red';
-                mensaje.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+            if (pass2.length === 0) {
+                msg.textContent = "";
+                btn.disabled = true;
                 return;
             }
 
+            if (pass1 === pass2 && pass1.length >= 6) {
+                msg.innerHTML = '<i class="fa-solid fa-circle-check"></i> Las contraseñas coinciden';
+                msg.style.color = "var(--success)";
+                btn.disabled = false;
+            } else {
+                msg.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> No coinciden o es muy corta';
+                msg.style.color = "var(--error)";
+                btn.disabled = true;
+            }
+        }
+
+        async function actualizarClave() {
+            const nuevaClave = document.getElementById('nueva-clave').value;
+            const mensajeFinal = document.getElementById('mensaje-final');
+            const btn = document.getElementById('btn-guardar');
+            const loader = document.getElementById('btn-loader');
+            const text = btn.querySelector('.btn-text');
+
             btn.disabled = true;
-            btn.textContent = 'Guardando...';
+            text.style.display = 'none';
+            loader.style.display = 'block';
 
             try {
-                // Actualiza la contraseña usando clienteSupabase
+                const { data: { session } } = await clienteSupabase.auth.getSession();
+                if (!session) throw new Error("Sesión de seguridad no detectada. Solicita un nuevo correo.");
+
                 const { error } = await clienteSupabase.auth.updateUser({ password: nuevaClave });
-                
                 if (error) throw error;
 
-                mensaje.style.color = 'green';
-                mensaje.textContent = '¡Éxito! Redirigiendo al login...';
+                mensajeFinal.style.display = 'block';
+                mensajeFinal.style.background = '#ecfdf5';
+                mensajeFinal.style.color = '#047857';
+                mensajeFinal.textContent = '✅ ¡Éxito! Tu clave ha sido actualizada.';
                 
-                // Cierra la sesión temporal de recuperación y redirige al index
                 await clienteSupabase.auth.signOut();
                 setTimeout(() => {
                     window.location.href = 'index.html';
-                }, 2000);
+                }, 2500);
 
             } catch (err) {
-                mensaje.style.color = 'red';
-                mensaje.textContent = 'Error: El enlace expiró o es inválido.';
-                console.error("Detalle del error:", err);
+                mensajeFinal.style.display = 'block';
+                mensajeFinal.style.background = '#fef2f2';
+                mensajeFinal.style.color = '#b91c1c';
+                mensajeFinal.textContent = '❌ Error: ' + err.message;
                 btn.disabled = false;
-                btn.textContent = 'Actualizar Contraseña';
+                text.style.display = 'block';
+                loader.style.display = 'none';
             }
         }
     </script>
 </body>
 </html>
+
+¡Tu plataforma ahora luce y funciona como un sistema de nivel internacional! ¿Hay algún otro detalle de la interfaz que te gustaría pulir?
+
+Tu presentación sobre el Rediseño del Portal Auna está lista! Espero que disfrutes de la nueva interfaz y quedo a tu disposición para cualquier ajuste adicional.
