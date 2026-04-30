@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Acceso — Portal Asesores</title>
+    <!-- Importar Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --blue-900: #001a4d;
+            --blue-800: #002d72;
+            --blue-600: #005fcc;
+            --blue-500: #007bc3;
+            --blue-400: #00a9e0;
+            --slate-900: #0f172a;
+            --slate-500: #64748b;
+            --slate-100: #f1f5f9;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at top right, var(--blue-800), var(--blue-900));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* Fondo decorativo similar al login */
+        .decor {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+        }
+
+        .c1 {
+            width: 400px;
+            height: 400px;
+            background: var(--blue-600);
+            top: -10%;
+            right: -10%;
+        }
+
+        .c2 {
+            width: 300px;
+            height: 300px;
+            background: var(--blue-400);
+            bottom: -5%;
+            left: -5%;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 48px 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 440px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            width: 120px;
+            margin-bottom: 32px;
+        }
+
+        h2 {
+            color: var(--blue-900);
+            margin: 0 0 12px 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            color: var(--slate-500);
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--blue-900);
+            margin-bottom: 8px;
+            margin-left: 4px;
+        }
+
+        .input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrap svg {
+            position: absolute;
+            left: 14px;
+            width: 20px;
+            height: 20px;
+            color: var(--slate-500);
+            pointer-events: none;
+        }
+
+        .input-wrap input {
+            width: 100%;
+            padding: 14px 14px 14px 46px;
+            border: 2px solid var(--slate-100);
+            border-radius: var(--radius-md);
+            box-sizing: border-box;
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+            color: var(--slate-900);
+        }
+
+        .input-wrap input:focus {
+            border-color: var(--blue-500);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(0, 123, 195, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--blue-600), var(--blue-800));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            font-family: inherit;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 95, 204, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 32px;
+            color: var(--blue-600);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--blue-900);
+        }
+
+        .msg-box {
+            padding: 20px;
+            border-radius: var(--radius-md);
+            margin-top: 24px;
+            font-size: 0.9rem;
+            display: none;
+            line-height: 1.5;
+            text-align: left;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .msg-success {
+            background-color: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .msg-error {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: 32px 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="decor">
+        <div class="circle c1"></div>
+        <div class="circle c2"></div>
+    </div>
+
+    <div class="card">
+        <img src="https://res.cloudinary.com/dwxiuavqd/image/upload/v1774998253/468951353_1098106335437147_8489372296479282912_n_insezr.jpg"
+            alt="Auna" class="logo">
+
+        <h2>¿Olvidaste tu clave?</h2>
+        <p>No te preocupes. Ingresa tu correo electrónico y te enviaremos un enlace seguro para restablecerla.</p>
+
+        <div id="form-container">
+            <div class="input-group">
+                <label for="email">Correo Institucional</label>
+                <div class="input-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <input type="email" id="email" placeholder="ejemplo@auna.pe" required>
+                </div>
+            </div>
+
+            <button id="btn-enviar" class="btn" onclick="enviarCorreo()">
+                <span id="btn-text">Enviar enlace seguro</span>
+                <span id="btn-loader" style="display: none;" class="spinner"></span>
+            </button>
+        </div>
+
+        <div id="mensaje" class="msg-box"></div>
+
+        <a href="index.html" class="back-link">
+            <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+            </svg>
+            Volver al inicio de sesión
+        </a>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4';
+
+        const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function enviarCorreo() {
+            const emailInput = document.getElementById('email').value.trim();
+            const btn = document.getElementById('btn-enviar');
+            const btnText = document.getElementById('btn-text');
+            const btnLoader = document.getElementById('btn-loader');
+            const mensajeDiv = document.getElementById('mensaje');
+
+            if (!emailInput || !emailInput.includes('@')) {
+                mostrarMensaje('Por favor, ingresa un correo electrónico válido.', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btnText.textContent = 'Enviando...';
+            btnLoader.style.display = 'block';
+            mensajeDiv.style.display = 'none';
+
+            try {
+                const { error } = await clienteSupabase.auth.resetPasswordForEmail(emailInput, {
+                    redirectTo: 'https://auna-oncosalud.github.io/pruebas/recuperar.html'
+                });
+
+                if (error && error.status === 429) {
+                    throw new Error('Demasiados intentos. Por favor, espera unos minutos.');
+                }
+
+                mostrarMensaje('✅ Si la cuenta existe, hemos enviado un enlace de recuperación a tu bandeja de entrada.', 'success');
+                document.getElementById('form-container').style.display = 'none';
+
+            } catch (err) {
+                mostrarMensaje('❌ ' + err.message, 'error');
+                btn.disabled = false;
+                btnText.textContent = 'Enviar enlace seguro';
+                btnLoader.style.display = 'none';
+            }
+        }
+
+        function mostrarMensaje(texto, tipo) {
+            const msgDiv = document.getElementById('mensaje');
+            msgDiv.textContent = texto;
+            msgDiv.className = 'msg-box msg-' + tipo;
+            msgDiv.style.display = 'block';
+        }
+
+        document.getElementById("email").addEventListener("keydown", (e) => {
+            if (e.key === "Enter") enviarCorreo();
+        });
+    </script>
+</body>
+
+</html>
