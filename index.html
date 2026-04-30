@@ -718,8 +718,7 @@
                         <div class="field-group">
                             <label class="field-label">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path
-                                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                                 </svg>
                                 Tipo de Plan
                             </label>
@@ -731,12 +730,25 @@
                                     <option value="Onco Pro">Onco Pro</option>
                                     <option value="Onco Plus">Onco Plus</option>
                                 </select>
-                                <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
+                                <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polyline points="6 9 12 15 18 9" />
                                 </svg>
                             </div>
                         </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="cot_nombreContratante">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                Nombre del contratante (opcional)
+                            </label>
+                            <div class="input-wrap">
+                                <input type="text" id="cot_nombreContratante" placeholder="Ej: Juan Pérez" oninput="cot_actualizarContratante()" autocomplete="off">
+                            </div>
+                        </div>
+
 
                         <div id="cot_contenedorIntegrantes" class="cot-integrantes-wrap"></div>
 
@@ -832,7 +844,13 @@
                                     <h4 id="cot_prev-plan">Plan Auna salud Classic</h4>
                                 </div>
 
+                                <div id="cot_nombre-contratante-box" class="cot-contratante-box" style="display: none;">
+                                    <p class="cot-contratante-label">Titular / Contratante:</p>
+                                    <p id="cot_prev-contratante" class="cot-contratante-name"></p>
+                                </div>
+
                                 <div id="cot_lista-detallada" class="cot-lista"></div>
+
 
                                 <div id="cot_bloque-descuento">
                                     <div class="cot-total-box">
