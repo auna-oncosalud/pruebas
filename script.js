@@ -3,8 +3,8 @@
    ══════════════════════════════════════════════ */
 
 // ─── CONFIGURACIÓN DE SUPABASE ───
-const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4'; 
+const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -16,7 +16,7 @@ let realtimeChannel = null;
 
 // ─── Variables de Seguridad (Watchdog) ───
 let temporizadorInactividad;
-const TIEMPO_INACTIVIDAD_MS = 2 * 60 * 1000; // 15 Minutos
+const TIEMPO_INACTIVIDAD_MS = 60 * 60 * 1000; // 60 Minutos
 
 /* ══════════════════════════════════════════════
    SISTEMA DE SESIÓN Y SEGURIDAD (WATCHDOG)
@@ -60,8 +60,8 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
             mostrarPantallaFormulario(leerSesion());
         }
         reiniciarTemporizador();
-    } 
-    
+    }
+
     if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
         borrarSesionCache();
         document.getElementById("form-section").style.display = "none";
@@ -94,7 +94,7 @@ function reiniciarTemporizador() {
 async function cerrarSesionPorInactividad() {
     console.log("Sesión expirada por inactividad.");
     alert("Tu sesión ha expirado por inactividad. Vuelve a iniciar sesión para continuar.");
-    await logout(); 
+    await logout();
 }
 
 // 3. Detectar si el asesor está trabajando
@@ -177,9 +177,9 @@ function iniciarSuscripcionTiempoReal() {
             (payload) => {
                 const usuarioModificado = payload.new?.usuario || payload.old?.usuario;
                 if (miRol === "Administrador") {
-                    leads_recargarSilencioso(); 
+                    leads_recargarSilencioso();
                 } else if (usuarioModificado === miUsuario) {
-                    leads_recargarSilencioso(); 
+                    leads_recargarSilencioso();
                 }
             }
         )
@@ -216,7 +216,7 @@ async function leads_recargarSilencioso() {
         }
 
         if (vistaStats && vistaStats.style.display === "block") {
-            renderStats(); 
+            renderStats();
         }
     } catch (error) {
         console.error("Error en recarga silenciosa de leads:", error);
@@ -1068,7 +1068,7 @@ function paginationRange(current, total) {
 
 function cambiarPagina(page) {
     currentPage = page;
-    aplicarFiltros(true); 
+    aplicarFiltros(true);
     document.getElementById("tabla-registros").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -2404,7 +2404,7 @@ function proy_renderAdmin(data, todosUsuarios = []) {
             };
             return Object.entries(mix).map(([prod, cant]) => {
                 const color = mapColors[prod] || "slate";
-                const inicial = prod.split(" ").pop(); 
+                const inicial = prod.split(" ").pop();
                 return `<span class="proy-mini-kpi ${color}">${inicial}: ${cant}</span>`;
             }).join("");
         };
@@ -2805,6 +2805,7 @@ async function ejecutarCrearAsesor() {
         btn.querySelector(".btn-loader").style.display = "none";
     }
 }
+
 async function ejecutarEliminarAsesor(nombreAsesor) {
     if (!confirm(`¿Estás seguro de eliminar a "${nombreAsesor.toUpperCase()}"? Se revocará su acceso de forma permanente.`)) return;
 
