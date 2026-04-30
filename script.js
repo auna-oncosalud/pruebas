@@ -2744,6 +2744,9 @@ async function ejecutarCrearAsesor() {
     const usuarioAuto = (nombre + apellido).toLowerCase().replace(/\s/g, "");
     const passAuto = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase() + "123.";
 
+    // 1. EL CAMBIO: Construimos el mensaje dinámico usando las variables ingresadas
+    const mensajeWaDefault = `Hola {nombre}! Soy *${nombre} ${apellido}* 👋🏼, consultor de *AUNA SALUD* 🏥\n\nAcá te comparto la información del plan *{producto}*:\n\n\n{detalle_producto}`;
+
     const btn = document.getElementById("btn-crear-asesor");
     btn.disabled = true;
     btn.querySelector(".btn-text").style.display = "none";
@@ -2775,7 +2778,9 @@ async function ejecutarCrearAsesor() {
                     apellido: apellido,
                     username: usuarioAuto,
                     equipo: miEquipo,
-                    rol: 'Asesor'
+                    rol: 'Asesor',
+                    // 2. EL CAMBIO: Enviamos el mensaje en la metadata de Supabase
+                    mensaje_whatsapp: mensajeWaDefault
                 }
             }
         });
@@ -2800,7 +2805,6 @@ async function ejecutarCrearAsesor() {
         btn.querySelector(".btn-loader").style.display = "none";
     }
 }
-
 async function ejecutarEliminarAsesor(nombreAsesor) {
     if (!confirm(`¿Estás seguro de eliminar a "${nombreAsesor.toUpperCase()}"? Se revocará su acceso de forma permanente.`)) return;
 
