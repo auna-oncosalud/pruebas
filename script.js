@@ -1926,11 +1926,28 @@ function cot_formatearFecha(str) {
     return new Date(str + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 }
 
+function cot_actualizarContratante() {
+    const input = document.getElementById("cot_nombreContratante");
+    const box = document.getElementById("cot_nombre-contratante-box");
+    const label = document.getElementById("cot_prev-contratante");
+    if (!input || !box || !label) return;
+
+    const nombre = input.value.trim();
+    if (nombre) {
+        label.textContent = nombre;
+        box.style.display = "block";
+    } else {
+        box.style.display = "none";
+    }
+}
+
 function cot_actualizarPreview() {
     const esCliente = cot_modoPanel === "cliente";
     const planEl = document.getElementById("cot_planGlobal");
     if (!planEl) return;
     document.getElementById("cot_prev-plan").textContent = planEl.value;
+    
+    cot_actualizarContratante();
 
     const fechaStr = document.getElementById("cot_fechaLimite").value;
     document.getElementById("cot_texto-vence").textContent = "Vence el " + cot_formatearFecha(fechaStr);
@@ -2619,7 +2636,7 @@ function closeTeamModal(e) {
     }, 250);
 }
 
-function showTeamMessage(msg, type = 'success') {
+function showTeamMessage(msg, type = 'success', copyText = null) {
     const container = document.getElementById("team-msg-container");
     const label = document.getElementById("team-msg");
     const icon = document.getElementById("team-msg-icon");
@@ -2629,11 +2646,45 @@ function showTeamMessage(msg, type = 'success') {
 
     if (type === 'success') {
         icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px; height:18px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+
+        // Si hay texto para copiar, agregamos el botón
+        if (copyText) {
+            const copyBtn = document.createElement("button");
+            copyBtn.className = "team-copy-btn";
+            copyBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                Copiar accesos
+            `;
+            copyBtn.onclick = () => copiarAccesos(copyText, copyBtn);
+            container.appendChild(copyBtn);
+        }
     } else {
         icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px; height:18px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
     }
 
     container.style.display = "flex";
+}
+
+function copiarAccesos(texto, btn) {
+    navigator.clipboard.writeText(texto).then(() => {
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--emerald-600)">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            ¡Copiado!
+        `;
+        btn.style.borderColor = "var(--emerald-500)";
+        btn.style.color = "var(--emerald-600)";
+
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.borderColor = "";
+            btn.style.color = "";
+        }, 2000);
+    });
 }
 
 function switchTeamTab(tab) {
@@ -2787,7 +2838,18 @@ async function ejecutarCrearAsesor() {
 
         if (error) throw error;
 
-        showTeamMessage(`✅ ¡Asesor creado en ${miEquipo}!<br><small>Usuario: <b>${usuarioAuto}</b><br>Clave: <b>${passAuto}</b></small>`, "success");
+        // Texto plano para copiar al portapapeles
+        const textoCopiar = `Hola *${nombre}!* Bienvenid@ a la familia *${miEquipo}*. Estamos listos para romperla juntos! 🔥
+
+Tus accesos están listos:
+
+📍 *Plataforma:* https://auna-oncosalud.github.io/panel
+👤 *Usuario:* ${usuarioAuto}
+🔑 *Clave:* ${passAuto}
+
+Entra, dale un vistazo y prepárate para el éxito. *¡Bienvenido@ al equipo ganador!*🏆🥇`;
+
+        showTeamMessage(`✅ ¡Asesor creado en ${miEquipo}!<br><small>Usuario: <b>${usuarioAuto}</b><br>Clave: <b>${passAuto}</b></small>`, "success", textoCopiar);
 
         nInput.value = "";
         aInput.value = "";
