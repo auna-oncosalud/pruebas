@@ -370,13 +370,13 @@ function mostrarPantallaFormulario(user) {
 
     const nombre = user.agente || user.usuario;
     const equipo = user.equipo || "Mi Equipo";
-    
+
     // Topbar: Solo el nombre del equipo, centrado
     document.getElementById("topbar-title").textContent = equipo;
-    
+
     document.getElementById("user-name-chip").textContent = nombre;
     document.getElementById("user-avatar").textContent = nombre.charAt(0).toUpperCase();
-    
+
     // Formulario: Saludo más humano y pequeño
     document.getElementById("form-title").textContent = `Hola, ${nombre}👋🏼`;
 
