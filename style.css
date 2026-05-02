@@ -1370,24 +1370,44 @@ form {
 }
 
 @media (max-width: 640px) {
-    .login-brand {
+    .login-split {
         display: flex;
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        background: none !important;
-        padding: 0;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+        background: var(--white);
     }
 
-    .login-brand::before {
+    /* Fondo azul deslizable (ahora en el padre) */
+    .login-split::before {
         content: '';
         position: absolute;
         inset: 0;
         background: linear-gradient(145deg, var(--blue-800) 0%, var(--blue-600) 55%, var(--blue-400) 100%);
-        z-index: 0;
+        z-index: 5;
         transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
     }
-    
+
+    .login-split.splash-active::before {
+        transform: translateX(-100%);
+    }
+
+    .login-brand {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 10;
+        background: none !important;
+        padding: 0;
+        transition: height 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
     .brand-inner {
         width: 100%;
         display: flex;
@@ -1400,7 +1420,7 @@ form {
     .brand-logo {
         transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
         transform-origin: center;
-        margin-bottom: 0;
+        margin-bottom: 2rem;
     }
 
     .brand-badge, .brand-headline, .brand-sub, .brand-stats, .brand-decor {
@@ -1408,37 +1428,77 @@ form {
     }
 
     .login-form-panel {
+        width: 100%;
+        height: 0;
         opacity: 0;
-        transform: translateY(20px);
-        pointer-events: none;
-        transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        overflow: hidden;
+        transition: height 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s ease 0.2s;
+        z-index: 10;
+        background: none;
     }
 
+    /* ESTADOS ANIMADOS */
     .login-split.splash-active .login-brand {
-        pointer-events: none;
+        height: auto;
+        margin-bottom: 0.5rem;
     }
 
-    .login-split.splash-active .login-brand::before {
-        transform: translateX(-100%);
+    .login-split.splash-active .brand-badge {
+        transform: translateX(0);
+        opacity: 1;
+        position: relative;
+        background: none;
+        border: none;
+        color: var(--blue-800);
+        margin-bottom: 1rem;
+        padding: 0;
+        backdrop-filter: none;
+        font-size: 0.6rem;
+        font-weight: 800;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
     }
 
-    .login-split.splash-active .brand-badge,
+    .login-split.splash-active .brand-badge::before,
+    .login-split.splash-active .brand-badge::after {
+        content: '';
+        height: 1px;
+        flex: 1;
+        min-width: 15px;
+        background: linear-gradient(to right, transparent, var(--blue-400));
+    }
+
+    .login-split.splash-active .brand-badge::after {
+        background: linear-gradient(to left, transparent, var(--blue-400));
+    }
+
+    .login-split.splash-active .brand-logo {
+        margin-bottom: 0;
+        transform: scale(0.8);
+    }
+
     .login-split.splash-active .brand-headline,
     .login-split.splash-active .brand-sub,
     .login-split.splash-active .brand-stats,
     .login-split.splash-active .brand-decor {
         transform: translateX(-100vw);
         opacity: 0;
-    }
-
-    .login-split.splash-active .brand-logo {
-        transform: translateY(var(--logo-translate-y, -30vh)) scale(1);
+        position: absolute;
     }
 
     .login-split.splash-active .login-form-panel {
+        height: auto;
         opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
+        padding: 0 1.25rem 2rem;
+        overflow: visible;
     }
 
     /* On mobile, show only form */
