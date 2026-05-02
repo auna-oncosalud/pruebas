@@ -285,13 +285,21 @@ async function login() {
         );
 
         const loginTask = async () => {
-            // ELIMINADO: await supabaseClient.auth.signOut(); <- ESTE ERA EL CULPABLE DEL BLOQUEO
-            
-            // 1. Buscar correo real
-            const { data: emailReal } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
+            // SOLUCIÓN DEFINITIVA: Limpieza nuclear de la memoria caché local
+            // Esto simula el "borrar datos de navegación" de forma invisible, destruyendo tokens corruptos
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-') && key.includes('-auth-token')) {
+                    localStorage.removeItem(key);
+                }
+            });
+
+            // 1. Buscar correo real (ahora la memoria está limpia, no se colgará)
+            const { data: emailReal, error: rpcError } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
+            if (rpcError) throw new Error("ERROR_RED"); 
+
             const emailLogin = emailReal || (userIn + "@auna.pe");
 
-            // 2. Autenticar (Esto sobreescribe automáticamente cualquier sesión vieja)
+            // 2. Autenticar desde cero
             const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                 email: emailLogin,
                 password: passIn
@@ -300,32 +308,32 @@ async function login() {
             if (authError || !authData.user) throw new Error("CREDENCIALES_INVALIDAS");
 
             // 3. Buscar perfil
-            const { data: usuario } = await supabaseClient
+            const { data: usuario, error: userError } = await supabaseClient
                 .from('usuarios')
                 .select('*')
                 .eq('id', authData.user.id)
                 .single();
 
-            if (!usuario) throw new Error("SIN_PERFIL");
+            if (userError || !usuario) throw new Error("SIN_PERFIL");
             
             return usuario;
         };
 
         const usuario = await Promise.race([loginTask(), timeoutPromise]);
 
-        // Si todo sale bien:
+        // Éxito
         guardarSesion(usuario.usuario, usuario.rol, usuario.agente, usuario.equipo);
         mostrarPantallaFormulario(usuario);
 
     } catch (error) {
-        if (error.message === "TIMEOUT") {
-            showLoginError("El servidor tardó mucho en responder. Verifica tu conexión a internet.");
+        if (error.message === "TIMEOUT" || error.message === "ERROR_RED") {
+            showLoginError("Error de conexión. El servidor no responde.");
         } else if (error.message === "CREDENCIALES_INVALIDAS") {
             showLoginError("Usuario o contraseña incorrectos.");
         } else if (error.message === "SIN_PERFIL") {
             showLoginError("No se pudo cargar tu perfil.");
         } else {
-            showLoginError("Error al conectar. Verifica tu conexión.");
+            showLoginError("Ocurrió un error inesperado.");
         }
     } finally {
         isLoggingIn = false;
