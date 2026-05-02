@@ -357,12 +357,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 loginSplit.classList.add('splash-active');
-                
-                // Ocultar los textos después de la animación para no estorbar
-                setTimeout(() => {
-                    const decorElements = document.querySelectorAll('.brand-badge, .brand-headline, .brand-sub, .brand-stats, .brand-decor');
-                    decorElements.forEach(el => el.style.display = 'none');
-                }, 800);
             }, 500);
         }
     }
