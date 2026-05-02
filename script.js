@@ -378,7 +378,7 @@ function mostrarPantallaFormulario(user) {
     document.getElementById("user-avatar").textContent = nombre.charAt(0).toUpperCase();
     
     // Formulario: Saludo más humano y pequeño
-    document.getElementById("form-title").textContent = `Hola, ${nombre}👋🏼. Registra tu Lead`;
+    document.getElementById("form-title").textContent = `Hola, ${nombre}👋🏼`;
 
     iniciarSuscripcionTiempoReal();
 }
