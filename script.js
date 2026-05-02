@@ -333,29 +333,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const loginSplit = document.querySelector('.login-split');
         if (loginSplit) {
             setTimeout(() => {
-                // Cálculo dinámico para posicionar el logo perfectamente sobre el formulario
-                const logo = document.querySelector('.brand-logo');
-                const formCard = document.querySelector('.login-card');
-                
-                if (logo && formCard) {
-                    const logoRect = logo.getBoundingClientRect();
-                    const formHeight = formCard.offsetHeight;
-                    const windowHeight = window.innerHeight;
-                    
-                    // El formulario está centrado verticalmente
-                    const formTopY = (windowHeight - formHeight) / 2;
-                    
-                    // Queremos que el logo se ubique justo arriba del formulario (ej. 20px de separación)
-                    const targetLogoBottomY = formTopY - 20;
-                    const targetLogoTopY = targetLogoBottomY - logoRect.height;
-                    
-                    // Cuánto debemos trasladarlo en Y desde su posición actual
-                    const translateY = targetLogoTopY - logoRect.top;
-                    
-                    // Asignar variable CSS
-                    document.documentElement.style.setProperty('--logo-translate-y', `${translateY}px`);
-                }
-
                 loginSplit.classList.add('splash-active');
             }, 500);
         }
