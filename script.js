@@ -261,12 +261,11 @@ function togglePass() {
 /* ══════════════════════════════════════════════
    LOGIN (Supabase)
 ══════════════════════════════════════════════ */
-let isLoggingIn = false; // Candado de seguridad global
+let isLoggingIn = false; 
 
 async function login() {
-    if (isLoggingIn) return; // Si ya está cargando, ignora los clics dobles
+    if (isLoggingIn) return; 
     
-    // Lectura clásica (solo minúsculas y sin espacios al inicio/final)
     const userIn = document.getElementById("username").value.trim().toLowerCase();
     const passIn = document.getElementById("password").value;
 
@@ -277,25 +276,22 @@ async function login() {
         return;
     }
 
-    isLoggingIn = true; // Cerramos el candado
+    isLoggingIn = true; 
     setLoginLoading(true);
 
     try {
-        // FRENO DE EMERGENCIA: Cronómetro estricto de 12 segundos
         const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error("TIMEOUT")), 12000)
         );
 
-        // TAREA PRINCIPAL DE LOGIN
         const loginTask = async () => {
-            // 1. Limpieza preventiva (mata sesiones zombie que causan bloqueos)
-            await supabaseClient.auth.signOut();
-
-            // 2. Buscar correo real
+            // ELIMINADO: await supabaseClient.auth.signOut(); <- ESTE ERA EL CULPABLE DEL BLOQUEO
+            
+            // 1. Buscar correo real
             const { data: emailReal } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
             const emailLogin = emailReal || (userIn + "@auna.pe");
 
-            // 3. Autenticar
+            // 2. Autenticar (Esto sobreescribe automáticamente cualquier sesión vieja)
             const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                 email: emailLogin,
                 password: passIn
@@ -303,7 +299,7 @@ async function login() {
 
             if (authError || !authData.user) throw new Error("CREDENCIALES_INVALIDAS");
 
-            // 4. Buscar perfil
+            // 3. Buscar perfil
             const { data: usuario } = await supabaseClient
                 .from('usuarios')
                 .select('*')
@@ -315,7 +311,6 @@ async function login() {
             return usuario;
         };
 
-        // LA CARRERA: Ejecutamos el login vs el cronómetro de 12 segundos.
         const usuario = await Promise.race([loginTask(), timeoutPromise]);
 
         // Si todo sale bien:
@@ -323,7 +318,6 @@ async function login() {
         mostrarPantallaFormulario(usuario);
 
     } catch (error) {
-        // Manejo estricto de cada posible falla
         if (error.message === "TIMEOUT") {
             showLoginError("El servidor tardó mucho en responder. Verifica tu conexión a internet.");
         } else if (error.message === "CREDENCIALES_INVALIDAS") {
@@ -334,7 +328,6 @@ async function login() {
             showLoginError("Error al conectar. Verifica tu conexión.");
         }
     } finally {
-        // Pase lo que pase, abrimos el candado y apagamos la animación
         isLoggingIn = false;
         setLoginLoading(false);
     }
