@@ -328,6 +328,46 @@ function showLoginError(msg) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    // --- Mobile Splash Screen Animation ---
+    if (window.innerWidth <= 640) {
+        const loginSplit = document.querySelector('.login-split');
+        if (loginSplit) {
+            setTimeout(() => {
+                // Cálculo dinámico para posicionar el logo perfectamente sobre el formulario
+                const logo = document.querySelector('.brand-logo');
+                const formCard = document.querySelector('.login-card');
+                
+                if (logo && formCard) {
+                    const logoRect = logo.getBoundingClientRect();
+                    const formHeight = formCard.offsetHeight;
+                    const windowHeight = window.innerHeight;
+                    
+                    // El formulario está centrado verticalmente
+                    const formTopY = (windowHeight - formHeight) / 2;
+                    
+                    // Queremos que el logo se ubique justo arriba del formulario (ej. 20px de separación)
+                    const targetLogoBottomY = formTopY - 20;
+                    const targetLogoTopY = targetLogoBottomY - logoRect.height;
+                    
+                    // Cuánto debemos trasladarlo en Y desde su posición actual
+                    const translateY = targetLogoTopY - logoRect.top;
+                    
+                    // Asignar variable CSS
+                    document.documentElement.style.setProperty('--logo-translate-y', `${translateY}px`);
+                }
+
+                loginSplit.classList.add('splash-active');
+                
+                // Ocultar los textos después de la animación para no estorbar
+                setTimeout(() => {
+                    const decorElements = document.querySelectorAll('.brand-badge, .brand-headline, .brand-sub, .brand-stats, .brand-decor');
+                    decorElements.forEach(el => el.style.display = 'none');
+                }, 800);
+            }, 500);
+        }
+    }
+    // ---------------------------------------
+
     document.getElementById("password")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") login();
     });
@@ -1946,7 +1986,7 @@ function cot_actualizarPreview() {
     const planEl = document.getElementById("cot_planGlobal");
     if (!planEl) return;
     document.getElementById("cot_prev-plan").textContent = planEl.value;
-    
+
     cot_actualizarContratante();
 
     const fechaStr = document.getElementById("cot_fechaLimite").value;
