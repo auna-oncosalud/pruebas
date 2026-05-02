@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://yemdfadeczjrvxptyerl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWRmYWRlY3pqcnZ4cHR5ZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzU1OTMsImV4cCI6MjA4NzQ1MTU5M30.MrWtFAhekPyuEUs0zgT3VSqYgPwd9o25lMdCuhxqwg4';
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ─── Variables Globales ───
 let allLeads = [];
@@ -285,21 +285,24 @@ async function login() {
         );
 
         const loginTask = async () => {
-            // SOLUCIÓN DEFINITIVA: Limpieza nuclear de la memoria caché local
-            // Esto simula el "borrar datos de navegación" de forma invisible, destruyendo tokens corruptos
+            // 1. Limpieza Nuclear de caché (Borra tokens muertos)
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('sb-') && key.includes('-auth-token')) {
                     localStorage.removeItem(key);
                 }
             });
 
-            // 1. Buscar correo real (ahora la memoria está limpia, no se colgará)
+            // 2. RESURRECCIÓN DEL CLIENTE (Soluciona el congelamiento móvil)
+            // Sobrescribimos la variable global para que toda la app use esta conexión fresca
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+            // 3. Buscar correo real usando el cliente fresco
             const { data: emailReal, error: rpcError } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
             if (rpcError) throw new Error("ERROR_RED"); 
 
             const emailLogin = emailReal || (userIn + "@auna.pe");
 
-            // 2. Autenticar desde cero
+            // 4. Autenticar desde cero
             const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                 email: emailLogin,
                 password: passIn
@@ -307,7 +310,7 @@ async function login() {
 
             if (authError || !authData.user) throw new Error("CREDENCIALES_INVALIDAS");
 
-            // 3. Buscar perfil
+            // 5. Buscar perfil
             const { data: usuario, error: userError } = await supabaseClient
                 .from('usuarios')
                 .select('*')
@@ -333,7 +336,7 @@ async function login() {
         } else if (error.message === "SIN_PERFIL") {
             showLoginError("No se pudo cargar tu perfil.");
         } else {
-            showLoginError("Ocurrió un error inesperado.");
+            showLoginError("Ocurrió un error inesperado al conectar.");
         }
     } finally {
         isLoggingIn = false;
