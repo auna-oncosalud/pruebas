@@ -261,50 +261,81 @@ function togglePass() {
 /* ══════════════════════════════════════════════
    LOGIN (Supabase)
 ══════════════════════════════════════════════ */
+let isLoggingIn = false; // Candado de seguridad global
+
 async function login() {
+    if (isLoggingIn) return; // Si ya está cargando, ignora los clics dobles
+    
+    // Lectura clásica (solo minúsculas y sin espacios al inicio/final)
     const userIn = document.getElementById("username").value.trim().toLowerCase();
     const passIn = document.getElementById("password").value;
 
-    setLoginLoading(true);
     document.getElementById("login-error").style.display = "none";
 
     if (!userIn || !passIn) {
         showLoginError("Ingresa usuario y contraseña");
-        setLoginLoading(false);
         return;
     }
 
+    isLoggingIn = true; // Cerramos el candado
+    setLoginLoading(true);
+
     try {
-        const { data: emailReal } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
-        const emailLogin = emailReal || (userIn + "@auna.pe");
+        // FRENO DE EMERGENCIA: Cronómetro estricto de 12 segundos
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("TIMEOUT")), 12000)
+        );
 
-        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-            email: emailLogin,
-            password: passIn
-        });
+        // TAREA PRINCIPAL DE LOGIN
+        const loginTask = async () => {
+            // 1. Limpieza preventiva (mata sesiones zombie que causan bloqueos)
+            await supabaseClient.auth.signOut();
 
-        if (authError || !authData.user) {
-            showLoginError("Usuario o contraseña incorrectos.");
-            setLoginLoading(false);
-            return;
-        }
+            // 2. Buscar correo real
+            const { data: emailReal } = await supabaseClient.rpc('obtener_email_de_usuario', { p_username: userIn });
+            const emailLogin = emailReal || (userIn + "@auna.pe");
 
-        // Buscamos el perfil para guardarlo en caché (El Dashboard se abre por onAuthStateChange)
-        const { data: usuario, error: profileError } = await supabaseClient
-            .from('usuarios')
-            .select('*')
-            .eq('id', authData.user.id)
-            .single();
+            // 3. Autenticar
+            const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                email: emailLogin,
+                password: passIn
+            });
 
-        if (usuario) {
-            guardarSesion(usuario.usuario, usuario.rol, usuario.agente, usuario.equipo);
-            mostrarPantallaFormulario(usuario);
-        } else {
-            showLoginError("No se pudo cargar tu perfil.");
-        }
+            if (authError || !authData.user) throw new Error("CREDENCIALES_INVALIDAS");
+
+            // 4. Buscar perfil
+            const { data: usuario } = await supabaseClient
+                .from('usuarios')
+                .select('*')
+                .eq('id', authData.user.id)
+                .single();
+
+            if (!usuario) throw new Error("SIN_PERFIL");
+            
+            return usuario;
+        };
+
+        // LA CARRERA: Ejecutamos el login vs el cronómetro de 12 segundos.
+        const usuario = await Promise.race([loginTask(), timeoutPromise]);
+
+        // Si todo sale bien:
+        guardarSesion(usuario.usuario, usuario.rol, usuario.agente, usuario.equipo);
+        mostrarPantallaFormulario(usuario);
+
     } catch (error) {
-        showLoginError("Error al conectar. Verifica tu conexión.");
+        // Manejo estricto de cada posible falla
+        if (error.message === "TIMEOUT") {
+            showLoginError("El servidor tardó mucho en responder. Verifica tu conexión a internet.");
+        } else if (error.message === "CREDENCIALES_INVALIDAS") {
+            showLoginError("Usuario o contraseña incorrectos.");
+        } else if (error.message === "SIN_PERFIL") {
+            showLoginError("No se pudo cargar tu perfil.");
+        } else {
+            showLoginError("Error al conectar. Verifica tu conexión.");
+        }
     } finally {
+        // Pase lo que pase, abrimos el candado y apagamos la animación
+        isLoggingIn = false;
         setLoginLoading(false);
     }
 }
